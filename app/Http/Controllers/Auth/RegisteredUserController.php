@@ -32,20 +32,29 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'role' => 'required|in:student,faculty',
         ]);
+
+        $status = $request->role === 'faculty' ? 'inactive' : 'active';
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role' => $request->role,
+            'status' => $status,
         ]);
 
         event(new Registered($user));
 
-        Auth::login($user);
+        if ($user->role === 'student') {
+            Auth::login($user);
+            return redirect()->intended(route('dashboard', absolute: false));
+        }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->route('login')->with('status', 'Your faculty account has been submitted for approval.');
     }
+
 }
